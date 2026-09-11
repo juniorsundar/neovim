@@ -38,4 +38,11 @@ tar -C "$STAGE" \
   -czf "$DIST/nvremote-nvim-linux-x86_64.tar.gz" \
   .
 
+cd "$DIST"
+
+sha256sum \
+  nvremote-nvim-linux-x86_64.tar.gz \
+  > nvremote-nvim-linux-x86_64.tar.gz.sha256
+
 echo "$DIST/nvremote-nvim-linux-x86_64.tar.gz"
+echo "$DIST/nvremote-nvim-linux-x86_64.tar.gz.sha256"
