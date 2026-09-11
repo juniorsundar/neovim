@@ -10,9 +10,6 @@ on:
 
 jobs:
   linux-x86_64:
-    permissions:
-      contents: write
-
     runs-on: ubuntu-24.04
 
     steps:
@@ -69,8 +66,87 @@ jobs:
             dist/nvremote-nvim-linux-x86_64.tar.gz.sha256
           if-no-files-found: error
 
+  linux-aarch64:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Build and package portable Neovim
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            alpine:3.22 \
+            sh -c '
+              set -eu
+
+              apk add --no-cache \
+                build-base \
+                cmake \
+                coreutils \
+                curl \
+                gettext-tiny-dev \
+                git \
+                linux-headers
+
+              make CMAKE_BUILD_TYPE=Release
+
+              ./packaging/nvremote/package-linux-aarch64.sh
+
+              ls -lh dist/nvremote-nvim-linux-aarch64.tar.gz
+            '
+
+      - name: Smoke test portable bundle on Ubuntu
+        run: |
+          set -euo pipefail
+
+          rm -rf /tmp/nvremote-smoke
+          mkdir -p /tmp/nvremote-smoke
+
+          tar \
+            -xzf dist/nvremote-nvim-linux-aarch64.tar.gz \
+            -C /tmp/nvremote-smoke
+
+          /tmp/nvremote-smoke/bin/nvim \
+            --clean \
+            --headless \
+            '+lua vim.treesitter.language.add("lua"); print(vim.env.VIMRUNTIME); print("TREE-SITTER OK")' \
+            +qa
+
+      - name: Upload portable Neovim bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: nvremote-nvim-linux-aarch64
+          path: |
+            dist/nvremote-nvim-linux-aarch64.tar.gz
+            dist/nvremote-nvim-linux-aarch64.tar.gz.sha256
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+
+    needs:
+      - linux-x86_64
+      - linux-aarch64
+
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: nvremote-nvim-linux-*
+          path: dist
+          merge-multiple: true
+
+      - name: Show release assets
+        run: ls -lh dist
+
       - name: Publish GitHub Release
-        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -79,4 +155,6 @@ jobs:
             --prerelease \
             --title "$GITHUB_REF_NAME" \
             dist/nvremote-nvim-linux-x86_64.tar.gz \
-            dist/nvremote-nvim-linux-x86_64.tar.gz.sha256
+            dist/nvremote-nvim-linux-x86_64.tar.gz.sha256 \
+            dist/nvremote-nvim-linux-aarch64.tar.gz \
+            dist/nvremote-nvim-linux-aarch64.tar.gz.sha256
