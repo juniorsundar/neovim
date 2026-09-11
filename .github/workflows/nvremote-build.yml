@@ -37,3 +37,10 @@ jobs:
 
               ls -lh dist/nvremote-nvim-linux-x86_64.tar.gz
             '
+
+      - name: Upload portable Neovim bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: nvremote-nvim-linux-x86_64
+          path: dist/nvremote-nvim-linux-x86_64.tar.gz
+          if-no-files-found: error
