@@ -1,0 +1,39 @@
+name: nvremote build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - nvremote-build
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Build and package portable Neovim
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            alpine:3.22 \
+            sh -c '
+              set -eu
+
+              apk add --no-cache \
+                build-base \
+                cmake \
+                coreutils \
+                curl \
+                gettext-tiny-dev \
+                git \
+                linux-headers
+
+              make CMAKE_BUILD_TYPE=Release
+
+              ./packaging/nvremote/package-linux-x86_64.sh
+
+              ls -lh dist/nvremote-nvim-linux-x86_64.tar.gz
+            '
